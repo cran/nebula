@@ -18,8 +18,12 @@ nebula(
   opt = "lbfgs",
   verbose = TRUE,
   cpc = 0.005,
+  mincp = 5,
   covariance = FALSE,
-  output_re = FALSE
+  output_re = FALSE,
+  reml = 0,
+  ncore = 2,
+  fmaxsize = Inf
 )
 }
 \arguments{
@@ -47,18 +51,26 @@ nebula(
 
 \item{verbose}{An optional logical scalar indicating whether to print additional messages. Default is FALSE.}
 
-\item{cpc}{A non-negative threshold for filtering low-expressed genes. Genes with counts per cell smaller than the specified value will not be analyzed.}
+\item{cpc}{A non-negative threshold for filtering low-expression genes. Genes with counts per cell smaller than the specified value will not be analyzed.}
+
+\item{mincp}{A positive integer threshold for filtering low-expression genes. A gene will not be analyzed if its number of cells that have a non-zero count is smaller than the specified value .}
 
 \item{covariance}{If TRUE, nebula will output the covariance matrix for the estimated log(FC), which can be used for testing contrasts.}
 
 \item{output_re}{If TRUE, nebula will output the subject-level random effects. Only effective for model='NBGMM' or 'NBLMM'.}
+
+\item{reml}{Either 0 (default) or 1. If it is one, REML will be used to estimate the overdispersions.}
+
+\item{ncore}{The number of cores used for parallel computing.}
+
+\item{fmaxsize}{The maximum allowed total size (in bytes) of global variables (future.globals.maxSize) when using parallel computing.}
 }
 \value{
 summary: The estimated coefficient, standard error and p-value for each predictor.
 
 overdispersion: The estimated cell-level and subject-level overdispersions \eqn{\sigma^2} and \eqn{\phi^{-1}}.
 
-convergence: More information about the convergence of the algorithm for each gene. A value of -20 or -30 indicates a potential failure of the convergence.
+convergence: More information about the convergence of the algorithm for each gene. A value of -20 or lower indicates a potential failure of the convergence. A value of one indicates that the convergence is reached due to a sufficiently small improvement of the function value. A value of -10 indicates that the convergence is reached because the gradients are close to zero (i.e., the critical point) and no improvement of the function value can be found.
 
 algorithm: The algorithm used for analyzing the gene. More information can be found in the vignettes.
 
