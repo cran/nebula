@@ -13,26 +13,32 @@ check_reml = function(reml, model)
   reml
 }
 
-check_conv = function(repml, conv)
+check_conv = function(repml, conv, nb, vare, min, max, cutoff = 1e-8)
 {
-  if(is.nan(repml$loglik))
-  {conv = -30}else{
-    if(repml$iter==50)
-    {
-      conv = -20
-    }else{
-      if(repml$damp==11)
-      {conv = -10}else{
-        if(repml$damp==12)
-        {conv = -40}
+  if(vare[1]==max[1] | vare[2]==min[2])
+  {
+    conv = -60
+  }else{
+    if(is.nan(repml$loglik))
+    {conv = -30}else{
+      if(repml$iter==50)
+      {
+        conv = -20
+      }else{
+        if(repml$damp==11)
+        {conv = -10}else{
+          if(repml$damp==12)
+          {conv = -40}
+        }
       }
     }
   }
   
-  # if(sum(is.na(diag(repml$var)))>0 | sum(diag(repml$var)<0,na.rm=T)>0)
-  if(RSpectra::eigs_sym(repml$var,1,which='SA')$values[1] < 1e-8)
+  if(nb>1)
   {
-    conv = -25
+    if(min(eigen(repml$var)$values) < cutoff)
+    {conv = -25}
   }
+  
   conv
 }
