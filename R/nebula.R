@@ -20,7 +20,7 @@
 #' @param reml Either 0 (default) or 1. If it is one, REML will be used to estimate the overdispersions.
 #' @param ncore The number of cores used for parallel computing.
 #' @param fmaxsize The maximum allowed total size (in bytes) of global variables (future.globals.maxSize) when using parallel computing.
-#' @return summary: The estimated coefficient, standard error and p-value for each predictor.
+#' @return summary: The estimated coefficient (logFC_), standard error (se_) and p-value (p_) for each predictor.
 #' @return overdispersion: The estimated cell-level and subject-level overdispersions \eqn{\sigma^2} and \eqn{\phi^{-1}}.
 #' @return convergence: More information about the convergence of the algorithm for each gene. A value of -20 or lower indicates a potential failure of the convergence. A value of one indicates that the convergence is reached due to a sufficiently small improvement of the function value. A value of -10 indicates that the convergence is reached because the gradients are close to zero (i.e., the critical point) and no improvement of the function value can be found.    
 #' @return algorithm: The algorithm used for analyzing the gene. More information can be found in the vignettes.
@@ -50,7 +50,13 @@ nebula = function (count, id, pred = NULL, offset = NULL,min = c(1e-4,1e-4), max
     }
     ncore <- maxcore
   }
+  
+  ## restore future.globals.maxSize on quitting this function
+  original_max_size <- getOption("future.globals.maxSize")
   options(future.globals.maxSize=fmaxsize)
+  on.exit({
+    options(future.globals.maxSize = original_max_size)
+  })
   
   eps = 1e-06
   
@@ -196,17 +202,26 @@ nebula = function (count, id, pred = NULL, offset = NULL,min = c(1e-4,1e-4), max
                      stop("The argument opt should be lbfgs, or trust.")
         )
         if(opt=='lbfgs')
-        {ref = ref$par}else{
-          ref = ref$argument
-          ref[nb+1] = median(c(exp(ref[nb+1]),min[1],max[1]))
-          ref[nb+2] = median(c(exp(ref[nb+2]),min[2],max[2]))
+        {
+          refp = ref$par
+          is_conv = ifelse(ref$convergence<0,0,1)
+        }else{
+          refp = ref$argument
+          refp[nb+1] = median(c(exp(refp[nb+1]),min[1],max[1]))
+          refp[nb+2] = median(c(exp(refp[nb+2]),min[2],max[2]))
+          is_conv = ifelse(ref$converged==TRUE,1,0)
         }
-        c(ref,1)
+        c(refp,is_conv)
       }, error = function(e) {
+        tryCatch({
         ref = nlminb(start=c(para,1,cell_init), objective=ptmg_ll,gradient=ptmg_der,posindy = posv$posindy, X = pred, offset = offset, Y = posv$Y, n_one = posv$n_onetwo,
                      ytwo = posv$ytwo, fam = id, fid = fid, cumsumy = cumsumy[i,], posind = posind[[i]], nb = nb, k = k,
                      nind = nind, lower = lower, upper = upper)
-        c(ref$par,0)
+        c(ref$par,ifelse(ref$convergence==0,1,0))
+        }, error = function(er)
+        {
+          c(para,1,cell_init,0)
+        })
       })
       # betae = re_t$par[1:nb]
       conv = re_t[length(re_t)]
@@ -224,7 +239,7 @@ nebula = function (count, id, pred = NULL, offset = NULL,min = c(1e-4,1e-4), max
       {
         if(model=="NBGMM")
         {
-          if (gni < cutoff_cell) {
+          if ((gni < cutoff_cell) | (conv==0) | is.nan(cv2p)) {
             re_t = tryCatch({bobyqa(para, pql_ll, reml = reml, eps = eps, ord=ord,
                           betas = betae, intcol = intcol, posindy = posv$posindy, X = pred,offset = offset, Y = posv$Y, n_one = posv$n_onetwo,
                           ytwo = posv$ytwo, fid = fid, cumsumy = cumsumy[i,], posind = posind[[i]], nb = nb, k = k,
@@ -238,7 +253,7 @@ nebula = function (count, id, pred = NULL, offset = NULL,min = c(1e-4,1e-4), max
             
             vare = re_t$par[1:2]
             fit = 2
-           
+            conv = ifelse(re_t$convergence<0,-50,1)
           }else{
             kappa_obs = gni/(1+cv2p)
             # if ((gni/(1+cv2)) < kappa)
@@ -256,10 +271,11 @@ nebula = function (count, id, pred = NULL, offset = NULL,min = c(1e-4,1e-4), max
                               })
               vare[1] = varsig$par[1]
               fit = 3
+              conv = ifelse(varsig$convergence==0,1,-50)
             }
           }
         }else{
-          if (gni < cutoff_cell) {
+          if ((gni < cutoff_cell) | (conv==0) | is.nan(cv2p)) {
             re_t = bobyqa(para, pql_nbm_ll, reml = reml,
                           eps = eps, ord=1, betas = betae, intcol = intcol, posindy = posv$posindy,
                           X = pred, offset = offset, Y = posv$Y, n_one = posv$n_onetwo,
@@ -267,6 +283,7 @@ nebula = function (count, id, pred = NULL, offset = NULL,min = c(1e-4,1e-4), max
                           nind = nind, lower = min, upper = max)
             vare = re_t$par[1:2]
             fit = 4
+            conv = ifelse(re_t$convergence<0,-50,1)
           }else{
             varsig = nlminb(para[1], pql_nbm_gamma_ll, gamma = para[2],betas = betae, intcol = intcol, reml = reml, eps = eps,ord=1,
                           posindy = posv$posindy, X = pred, offset = offset,Y = posv$Y, n_one = posv$n_onetwo, ytwo = posv$ytwo,
@@ -274,6 +291,7 @@ nebula = function (count, id, pred = NULL, offset = NULL,min = c(1e-4,1e-4), max
                           nind = nind, lower = min[1], upper = max[1])
             vare[1] = varsig$par[1]
             fit = 6
+            conv = ifelse(varsig$convergence==0,1,-50)
           }
         }
       }else {
@@ -301,6 +319,7 @@ nebula = function (count, id, pred = NULL, offset = NULL,min = c(1e-4,1e-4), max
           fit = 4
         }
         vare = re_t$par[1:2]
+        conv = ifelse(re_t$convergence<0,-50,1)
       }
       
       betae[intcol] = betae[intcol] - vare[1]/2
