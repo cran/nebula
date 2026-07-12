@@ -5,9 +5,12 @@ knitr::opts_chunk$set(
 )
 
 ## ----eval=FALSE---------------------------------------------------------------
-#  install.packages("devtools")
-#  library(devtools)
-#  install_github("lhe17/nebula")
+# install.packages("devtools")
+# library(devtools)
+# install_github("lhe17/nebula")
+
+## ----eval=FALSE---------------------------------------------------------------
+# install.packages("nebula")
 
 ## ----echo=TRUE----------------------------------------------------------------
 library(nebula)
@@ -33,23 +36,23 @@ re = nebula(sample_data$count,sample_data$sid,pred=df,ncore=1)
 re
 
 ## ----eval=FALSE,echo=TRUE-----------------------------------------------------
-#  data_g = group_cell(count=sample_data$count,id=sample_data$sid,pred=df)
-#  re = nebula(data_g$count,data_g$id,pred=data_g$pred)
+# data_g = group_cell(count=sample_data$count,id=sample_data$sid,pred=df)
+# re = nebula(data_g$count,data_g$id,pred=data_g$pred)
 
 ## ----eval=FALSE,echo=TRUE-----------------------------------------------------
-#  library(Matrix)
-#  # An example of using the library size of each cell as the scaling factor
-#  re = nebula(sample_data$count,sample_data$sid,pred=df,offset=Matrix::colSums(sample_data$count))
+# library(Matrix)
+# # An example of using the library size of each cell as the scaling factor
+# re = nebula(sample_data$count,sample_data$sid,pred=df,offset=Matrix::colSums(sample_data$count))
 
 ## ----echo=TRUE,eval=FALSE-----------------------------------------------------
-#  library(nebula)
-#  data("sample_seurat")
-#  seuratdata <- scToNeb(obj = sample_seurat, assay = "RNA", id = "replicate", pred = c("celltype","tech"), offset="nCount_RNA")
-#  ## Make sure that the variables do not contain NA; Otherwise, df would have fewer rows.
-#  df = model.matrix(~celltype+tech, data=seuratdata$pred)
-#  ## include only the first two cell types in the model to avoid separation due to too many binary variables
-#  data_g = group_cell(count=seuratdata$count,id=seuratdata$id,pred=df[,c("(Intercept)","celltypeactivated_stellate","techcelseq2","techfluidigmc1","techindrop", "techsmartseq2")],offset=seuratdata$offset)
-#  re = nebula(data_g$count,data_g$id,pred=data_g$pred,offset=data_g$offset)
+# library(nebula)
+# sample_seurat <- load_sample_seurat()
+# seuratdata <- scToNeb(obj = sample_seurat, assay = "RNA", id = "replicate", pred = c("celltype","tech"), offset="nCount_RNA")
+# ## Make sure that the variables do not contain NA; Otherwise, df would have fewer rows.
+# df = model.matrix(~celltype+tech, data=seuratdata$pred)
+# ## include only the first two cell types in the model to avoid separation due to too many binary variables
+# data_g = group_cell(count=seuratdata$count,id=seuratdata$id,pred=df[,c("(Intercept)","celltypeactivated_stellate","techcelseq2","techfluidigmc1","techindrop", "techsmartseq2")],offset=seuratdata$offset)
+# re = nebula(data_g$count,data_g$id,pred=data_g$pred,offset=data_g$offset)
 
 ## ----eval=TRUE,echo=TRUE------------------------------------------------------
 re_ln = nebula(sample_data$count,sample_data$sid,pred=df,offset=sample_data$offset,method='LN',ncore=1)
@@ -68,7 +71,7 @@ re = nebula(sample_data$count,sample_data$sid,pred=df,offset=sample_data$offset,
 knitr::kable(re$summary)
 
 ## ----eval=FALSE,echo=TRUE-----------------------------------------------------
-#  re = nebula(sample_data$count,sample_data$sid,pred=df,offset=sample_data$offset,model='NBLMM',reml=1,ncore=1)
+# re = nebula(sample_data$count,sample_data$sid,pred=df,offset=sample_data$offset,model='NBLMM',reml=1,ncore=1)
 
 ## ----eval=TRUE,echo=TRUE------------------------------------------------------
 df = model.matrix(~X1+X2+cc, data=sample_data$pred)
@@ -96,12 +99,12 @@ p = pchisq(eff^2/(t(contrast)%*%cov%*%contrast),1,lower.tail=FALSE)
 p
 
 ## ----eval=FALSE,echo=TRUE-----------------------------------------------------
-#  re = nebula(sample_data$count,sample_data$sid,pred=df,offset=sample_data$offset)
-#  pres = nbresidual(re,count=sample_data$count,id=sample_data$sid,pred=df,offset=sample_data$offset)
+# re = nebula(sample_data$count,sample_data$sid,pred=df,offset=sample_data$offset)
+# pres = nbresidual(re,count=sample_data$count,id=sample_data$sid,pred=df,offset=sample_data$offset)
 
 ## ----eval=FALSE,echo=TRUE-----------------------------------------------------
-#  re = nebula(sample_data$count,sample_data$sid,pred=df,offset=sample_data$offset,output_re=TRUE)
+# re = nebula(sample_data$count,sample_data$sid,pred=df,offset=sample_data$offset,output_re=TRUE)
 
 ## ----eval=FALSE,echo=TRUE-----------------------------------------------------
-#  pres = nbresidual(re,count=sample_data$count,id=sample_data$sid,pred=df,offset=sample_data$offset,conditional=TRUE)
+# pres = nbresidual(re,count=sample_data$count,id=sample_data$sid,pred=df,offset=sample_data$offset,conditional=TRUE)
 
